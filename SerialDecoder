@@ -1,0 +1,692 @@
+#!/bin/bash
+################################################################################
+# Copyright 2020 Liam Matthews
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+#
+################################################################################
+#
+#            Name:  serialdecoder
+#     Description:  Provides information on Apple devices based on the serial number of the device
+# Original Author:  Liam Matthews
+#            Link:  https://github.com/ozpinbeacon/serialdecoder
+#         Created:  2019-10-28
+#   Last Modified:  2020-07-02
+#         Version:  2.0
+#
+################################################################################
+
+shortUsage="Usage: serialdecoder [-b] [-i] INPUTFILE [-o] OUTPUTFILE | [-s] SERIAL
+Use -h for more information"
+longUsage="Usage: serialdecoder -b [-i] INPUTFILE [-o] OUTPUTFILE | [-s] SERIAL
+Optional arguments:
+-h      Show this message and then exit
+-b      Use bulk mode
+-i      Input csv with serials, used in conjunction with -b mode
+-o      Print output to a file, if not specified with -b it will print to the working directory
+-s      Individual serial"
+if [[ $1 == "" ]]; then
+  echo "ERROR: No option given."
+  echo "$shortUsage"
+  exit 1
+fi
+while getopts ":s:o:bh" options; do
+  case "$options" in
+    s)
+      serial=$OPTARG
+      serialArray=("$OPTARG")
+      ;;
+    o)
+      outputFile=$OPTARG
+      ;;
+    b)
+      bulkFlag="TRUE"
+      shift 0
+      if [[ $2 == "" ]]; then
+        echo "ERROR: -b requires an additional argument"
+        echo "$shortUsage"
+        exit 1
+      fi
+      while getopts ":i:o:" bulkopt; do
+        case "$bulkopt" in
+          i)
+            serialArray=($(cat $OPTARG | tr -d '\r'))
+            ;;
+          o)
+            outputFile=$OPTARG
+            ;;
+          \?)
+            echo "Option not recognized."
+            echo "$shortUsage"
+            ;;
+          :)
+            echo "-$OPTARG requires a file input"
+            echo "$shortUsage"
+            ;;
+        esac
+      done
+      ;;
+    h)
+      echo "$longUsage"
+      exit 0
+      ;;
+    \?)
+      echo "ERROR: Option not recognized."
+      echo "$shortUsage"
+      exit 1
+      ;;
+    :)
+      echo "-$OPTARG requires an argument"
+      echo "$shortUsage"
+  esac
+done
+
+currentDate=$(date "+%Y-%m-%d")
+function dateOfManufacture {
+  local ManafactureYear=$1
+  local YearHalf=$(echo "$ManafactureYear" | awk '{print $3}')
+  local Year=$(echo "$ManafactureYear" | awk '{print $1}')
+  if [[ "$YearHalf" =~ "Early" ]]; then
+    case $rawDOM in
+      1)
+        wom="01-01"
+      ;;
+      2)
+        wom="08-01"
+      ;;
+      3)
+        wom="15-01"
+      ;;
+      4)
+        wom="22-01"
+      ;;
+      5)
+        wom="29-01"
+      ;;
+      6)
+        wom="05-02"
+      ;;
+      7)
+        wom="12-02"
+      ;;
+      8)
+        wom="19-02"
+      ;;
+      9)
+        wom="26-02"
+      ;;
+      C)
+        wom="04-03"
+      ;;
+      D)
+        wom="11-03"
+      ;;
+      F)
+        wom="18-03"
+      ;;
+      G)
+        wom="25-03"
+      ;;
+      H)
+        wom="01-04"
+      ;;
+      J)
+        wom="08-04"
+      ;;
+      K)
+        wom="15-04"
+      ;;
+      L)
+        wom="22-04"
+      ;;
+      M)
+        wom="29-04"
+      ;;
+      N)
+        wom="06-05"
+      ;;
+      P)
+        wom="13-05"
+      ;;
+      Q)
+        wom="20-05"
+      ;;
+      R)
+        wom="27-05"
+      ;;
+      T)
+        wom="03-06"
+      ;;
+      V)
+        wom="10-06"
+      ;;
+      W)
+        wom="17-06"
+      ;;
+      X)
+        wom="24-06"
+      ;;
+      Y)
+        wom="1-07"
+      ;;
+    esac
+  elif [[ "$YearHalf" =~ "Late" ]]; then
+    case $rawDOM in
+      1)
+        wom="08-07"
+      ;;
+      2)
+        wom="15-07"
+      ;;
+      3)
+        wom="22-07"
+      ;;
+      4)
+        wom="29-07"
+      ;;
+      5)
+        wom="05-08"
+      ;;
+      6)
+        wom="12-08"
+      ;;
+      7)
+        wom="19-08"
+      ;;
+      8)
+        wom="26-08"
+      ;;
+      9)
+        wom="02-09"
+      ;;
+      C)
+        wom="09-09"
+      ;;
+      D)
+        wom="16-09"
+      ;;
+      F)
+        wom="23-09"
+      ;;
+      G)
+        wom="30-09"
+      ;;
+      H)
+        wom="07-10"
+      ;;
+      J)
+        wom="14-10"
+      ;;
+      K)
+        wom="21-10"
+      ;;
+      L)
+        wom="28-10"
+      ;;
+      M)
+        wom="04-11"
+      ;;
+      N)
+        wom="11-11"
+      ;;
+      P)
+        wom="18-11"
+      ;;
+      Q)
+        wom="25-11"
+      ;;
+      R)
+        wom="02-12"
+      ;;
+      T)
+        wom="09-12"
+      ;;
+      V)
+        wom="16-12"
+      ;;
+      W)
+        wom="23-12"
+      ;;
+      X)
+        wom="30-12"
+      ;;
+      Y)
+        wom="31-12"
+      ;;
+    esac
+  else
+    wom="Error"
+  fi
+  dateOfManufacture="${wom}-${Year}"
+}
+function manufactureLocation() {
+  case $rawML in
+    FC)
+      ml="Fountain Colorado - USA"
+      ;;
+    XA|XB|QP|G8)
+      ml="USA"
+      ;;
+    RN)
+      ml="Mexico"
+      ;;
+    CK)
+      ml="Cork - Ireland"
+      ;;
+    VM)
+      ml="Foxconn Pardubice - Czech Republic"
+      ;;
+    SG)
+      ml="Singapore"
+      ;;
+    MB)
+      ml="Malaysia"
+      ;;
+    PT|CY)
+      ml="Korea"
+      ;;
+    EE|QT|UV)
+      ml="Korea"
+      ;;
+    FK|F1|F2)
+      ml="Foxconn Zhengzhou - China"
+      ;;
+    W8)
+      ml="Shanghai - China"
+      ;;
+    DL|DM)
+      ml="Foxconn - China"
+      ;;
+    DN)
+      ml="Foxconn Chengdu - China"
+      ;;
+    YM|7J)
+      ml="Hon Hai/Foxconn - China"
+      ;;
+    C1|4H|WQ|F7|FV)
+      ml="China"
+      ;;
+    C0)
+      ml="Tech Com - China"
+      ;;
+    C3)
+      ml="Foxxcon Shenzhen - China"
+      ;;
+    C7)
+      ml="Pentragon Changhai - China"
+      ;;
+    RM)
+      ml="Refurbished"
+      ;;
+    *)
+      ml="Unknown"
+      ;;
+  esac
+}
+function manufactureYear() {
+  case $rawYOM in
+    C)
+      yom="2020 - Early"
+      ;;
+    D)
+      yom="2010 - Late"
+      ;;
+    F)
+      yom="2011 - Early"
+      ;;
+    G)
+      yom="2011 - Late"
+      ;;
+    H)
+      yom="2012 - Early"
+      ;;
+    J)
+      yom="2012 - Late"
+      ;;
+    K)
+      yom="2013 - Early"
+      ;;
+    L)
+      yom="2013 - Late"
+      ;;
+    M)
+      yom="2014 - Early"
+      ;;
+    N)
+      yom="2014 - Late"
+      ;;
+    P)
+      yom="2015 - Early"
+      ;;
+    Q)
+      yom="2015 - Late"
+      ;;
+    R)
+      yom="2016 - Early"
+      ;;
+    S)
+      yom="2016 - Late"
+      ;;
+    T)
+      yom="2017 - Early"
+      ;;
+    V)
+      yom="2017 - Late"
+      ;;
+    W)
+      yom="2018 - Early"
+      ;;
+    X)
+      yom="2018 - Late"
+      ;;
+    Y)
+      yom="2019 - Early"
+      ;;
+    Z)
+      yom="2019 - Late"
+      ;;
+  esac
+}
+function computerModel() {
+  case $rawMODEL in
+
+    # 13-inch MacBook Pro
+
+    DRJ9|DV13|DH2G)
+      mdl="MacBook Pro (13-inch - 2011)"
+      ;;
+    DV30|DV31|DTY3|DTY4)
+      mdl="MacBook Pro (13-inch - Mid 2012)"
+      ;;
+    G3QG|G3QH|FGYY|FH01|FH03)
+      mdl="MacBook Pro (13-inch - Late 2013)"
+      ;;
+    FVH3|FVH4|FVH5|FVH7|FVH8)
+      mdl="MacBook Pro (13-inch - Early 2015)"
+      ;;
+    HV2D|HV29|HV2H|HV2G)
+      mdl="MacBook Pro (13-inch - Mid 2017)"
+      ;;
+    HV2M)
+      mdl="MacBook Pro (13-inch - Mid 2017 - Four Thunderbolt 3 ports)"
+      ;;
+    LVDC|LVDL|JHD3)
+      mdl="MacBook Pro (13-inch - 2018 - Four Thunderbolt 3 ports)"
+      ;;
+    L412)
+      mdl="MacBook Pro (13-inch - 2019 - Two Thunderbolt 3 ports)"
+      ;;
+
+    # 15-inch MacBook Pro
+
+    DV7L|DV7P)
+      mdl="MacBook Pro (15-inch - 2011)"
+      ;;
+    DV33|DKQ4|DKQ5)
+      mdl="MacBook Pro (15-inch - Mid 2012)"
+      ;;
+    FD56|G3QN|G3QC|FD58|FD57)
+      mdl="MacBook Pro (15-inch - Late 2013)"
+      ;;
+    G8WP|G8WL)
+      mdl="MacBook Pro (15-inch - Mid 2015)"
+      ;;
+    HTD6)
+      mdl="MacBook Pro (15-inch - Mid 2017)"
+      ;;
+    JGH6)
+      mdl="MacBook Pro (15-inch - 2019)"
+      ;;
+
+    # 16-inch MacBook Pro
+
+    MD6T|MD6M|MD6R)
+      mdl="MacBook Pro (16-inch - 2019)"
+      ;;
+
+    # 11-inch MacBook Air
+
+    DJYC)
+      mdl="MacBook Air (11-inch - Mid 2011)"
+      ;;
+    DRV6|DRV7)
+      mdl="MacBook Air (11-inch - Mid 2012)"
+      ;;
+    G083|F5N7)
+      mdl="MacBook Air (11-inch - Mid 2013)"
+      ;;
+    GFWM)
+      mdl="MacBook Air (11-inch - Early 2015)"
+      ;;
+
+    # 13-inch MacBook Air
+
+    DJWT)
+      mdl="MacBook Air (13-inch - Mid 2011)"
+      ;;
+    DRVC|DRVF)
+      mdl="MacBook Air (13-inch - Mid 2012)"
+      ;;
+    G5RP|F6T6|F5V7|F6T5|G086)
+      mdl="MacBook Air (13-inch - Mid 2013)"
+      ;;
+    J1WK|J1WL|J1WT|G944)
+      mdl="MacBook Air (13-inch - Early 2015)"
+      ;;
+
+    # Mac mini
+
+    DJD0)
+      mdl="Mac mini (Mid 2011)"
+      ;;
+    DWYL)
+      mdl="Mac mini (Late 2012)"
+      ;;
+    G1HW)
+      mdl="Mac mini (Late 2014)"
+      ;;
+    JYVY)
+      mdl="Mac mini (2018)"
+      ;;
+
+    # 21.5-inch iMac
+
+    F8J2|F8J8)
+      mdl="iMac Intel (21.5-inch - Late 2013)"
+      ;;
+    J1G9)
+      mdl="iMac Intel (21.5-inch - Mid 2017)"
+      ;;
+
+    # 27-inch iMac
+
+    DNMN)
+      mdl="iMac Intel (27-inch - Late 2012)"
+      ;;
+    F8J9)
+      mdl="iMac Intel (27-inch - Late 2013)"
+      ;;
+    GG7V)
+      mdl="iMac Intel (27-Inch - Late 2015)"
+      ;;
+    J1GN)
+      mdl="iMac Intel (27-inch - Mid 2017)"
+      ;;
+
+    # MacPro
+
+    F4MD)
+      mdl="MacPro (Mid 2010)"
+      ;;
+
+    # iPad
+
+    DFHW)
+      mdl="iPad 2 (Wi-Fi - 16GB)"
+      ;;
+    DKPK)
+      mdl="iPad 2 (Wi-Fi - 64GB)"
+      ;;
+    DJ8T)
+      mdl="iPad 3th Generation (Wi-Fi - 16GB)"
+      ;;
+    F182)
+      mdl="iPad 4th Generation (Wi-Fi - 16GB)"
+      ;;
+    F183)
+      mdl="iPad 4th Generation (Wi-Fi - 32GB)"
+      ;;
+    HLFD)
+      mdl="iPad 5th Generation (Wi-Fi - 128GB)"
+      ;;
+    JF8J)
+      mdl="iPad 6th Generation (Wi-Fi - 32GB)"
+      ;;
+    JF8M)
+      mdl="iPad 6th Generation (Wi-Fi - 128GB)"
+      ;;
+    MF3Q)
+      mdl="iPad 7th Generation (Wi-Fi - 128GB)"
+      ;;
+
+    # iPad Air
+
+    FK10|FK14)
+      mdl="iPad Air (Wi-Fi - 16GB)"
+      ;;
+    FK15)
+      mdl="iPad Air (Wi-Fi - 32GB)"
+      ;;
+    G5VT)
+      mdl="iPad Air 2 (Wi-Fi - 16GB)"
+      ;;
+    HG5D)
+      mdl="iPad Air 2 (Wi-Fi - 32GB)"
+      ;;
+    G5VW)
+      mdl="iPad Air 2 (Wi-Fi - 64GB)"
+      ;;
+    G5W2)
+      mdl="iPad Air 2 (Wi-Fi - 128GB)"
+      ;;
+    LMPD)
+      mdl="iPad Air 3rd generation (Wi-Fi - 64GB)"
+      ;;
+
+    # iPad mini
+
+    F19M)
+      mdl="iPad mini (CDMA - 16GB)"
+      ;;
+    F196)
+      mdl="iPad mini (Wi-Fi - 16GB)"
+      ;;
+    FCM9)
+      mdl="iPad mini 2nd Generation (Wi-Fi - 32GB)"
+      ;;
+    FCM7)
+      mdl="iPad mini 2nd Generation (Wi-Fi - 64GB)"
+      ;;
+    G5V6)
+      mdl="iPad mini 3 (Wi-Fi - 64GB)"
+      ;;
+    GHK9)
+      mdl="iPad mini 4 (Wi-Fi - 16GB)"
+      ;;
+
+    # iPad Pro
+
+    GMLL)
+      mdl="iPad Pro (12.9-inch - Wi-Fi - 128 GB)"
+      ;;
+    H1MC)
+      mdl="iPad Pro (9.7-inch Wi-Fi)"
+      ;;
+
+    # iPhone
+
+    DTWG)
+      mdl="iPhone 5 (CDMA - 32GB)"
+      ;;
+    G5MW)
+      mdl="iPhone 6 (128GB)"
+      ;;
+    G5MT)
+      mdl="iPhone 6 (64GB)"
+      ;;
+    GRX2)
+      mdl="iPhone 6S Plus (128GB)"
+      ;;
+    HG7F)
+      mdl="iPhone 7 (32GB)"
+      ;;
+    HFY7)
+      mdl="iPhone 7 Plus (128GB)"
+      ;;
+    JC6C)
+      mdl="iPhone 8"
+      ;;
+
+    # iPod Touch
+
+    G22Y)
+      mdl="iPod touch (5th Generation - 16GB)"
+      ;;
+    GGK4)
+      mdl="iPod touch (6th Generation - 16GB)"
+      ;;
+
+    # Apple TV
+
+    FF54)
+      mdl="Apple TV 3rd Generation Rev 2"
+      ;;
+
+    # If model is not recognized
+
+    *)
+      mdl="Model not recognized - Apple reports $(curl -s "https://support-sp.apple.com/sp/product?cc=${rawMODEL}&lang=en_AU" | awk -F"<configCode>|</configCode>" '{print $2}')"
+      ;;
+  esac
+}
+
+for serial in ${serialArray[@]}; do
+  warrantyStatus=$(curl -sS "https://services.compnow.com.au/warranty/index_apiw.php?SN=${serial}" | sed 's/<result>//' | sed 's/<\/result>//' )
+  rawML=${serial:0:2}
+  rawYOM=${serial:3:1}
+  rawDOM=${serial:4:1}
+  rawMODEL=${serial:8:4}
+  computerModel
+  manufactureYear
+  manufactureLocation
+  dateOfManufacture "$yom"
+  if [[ $outputFile == "" ]] && [[ $bulkFlag != "TRUE" ]]; then
+    echo "Serial Number: $serial
+Warranty status: $warrantyStatus
+Manufacture location: $ml
+Date of manufacture: $dateOfManufacture
+Model: $mdl"
+  elif [[ "${outputFile}" == "" ]] && [[ "${bulkFlag}" == "TRUE" ]]; then
+    echo "$serial,$ml,$dateOfManufacture,$yom,$mdl,$warrantyStatus" >> "SerialDecoderBulk-$currentDate.csv"
+  else
+    echo "$serial,$ml,$dateOfManufacture,$yom,$mdl,$warrantyStatus" >> "${outputFile}"
+  fi
+done
+
+exit 0
