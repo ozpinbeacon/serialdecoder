@@ -1,5 +1,6 @@
 # Serial Decoder
 Bash script to provide information based on the serial number of an Apple device
+The number of devices is limited to the ones I've encountered at my job, if you have others to add please do let me know
 
 Usage: serialdecoder -b [-i] INPUTFILE [-o] OUTPUTFILE | [-s] SERIAL
 Optional arguments:
